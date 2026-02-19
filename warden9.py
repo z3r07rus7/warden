@@ -10,6 +10,7 @@ from datetime import datetime
 # --- CONFIGURATION ---
 EXCLUDE = ["NetworkManager"]
 SUBNET_MASK = "/24"  # Banning the entire /24 range
+REFRESH_RATE = 4     # 4 seconds to allow time for typing commands
 
 connection_registry = {}
 closed_history = []
@@ -27,7 +28,6 @@ signal.signal(signal.SIGINT, signal_handler)
 def get_subnet_string(ip):
     """Calculates the subnet string from a host IP."""
     try:
-        # strict=False allows passing a host IP (like .45) to get the .0/24 network
         net = ipaddress.ip_network(f"{ip}{SUBNET_MASK}", strict=False)
         return str(net)
     except ValueError:
@@ -84,7 +84,6 @@ def command_listener():
                 if apply_firewall("-A", target_ip):
                     banned_subnets.add(target_subnet)
                     status_message = f"BANNED RANGE: {target_subnet} (ID: {target_id})"
-                    # Kill existing connections to the entire subnet
                     subprocess.run(["sudo", "ss", "-K", "dst", target_subnet], capture_output=True)
                 else:
                     status_message = f"FAILED TO BAN: {target_subnet}"
@@ -167,7 +166,9 @@ def run_monitor():
             
         except Exception:
             pass
-        time.sleep(1)
+        
+        time.sleep(REFRESH_RATE)
 
 if __name__ == "__main__":
     run_monitor()
+
